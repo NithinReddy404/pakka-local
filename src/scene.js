@@ -47,7 +47,7 @@ export const BUBBLES = {
 
 // The butterfly that roams around the menu board: figure-eight radius in board widths,
 // loop time and the pause on the board's top edge (seconds).
-export const BUTTERFLY = { radius: 1.5, loopS: 14, perchS: 2 }
+export const BUTTERFLY = { radius: 1.5, loopS: 16, perchS: 3.5, seed: 20261023 }
 
 // Where the vendor stands: the inside of the serving window. He is clipped to this rect.
 export const WINDOW_INTERIOR = { left: 65.8, top: 45.7, width: 6.7, height: 6.6 }

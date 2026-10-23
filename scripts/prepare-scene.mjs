@@ -4,7 +4,9 @@
 import sharp from "sharp";
 import { mkdirSync } from "node:fs";
 
-const SRC = "source-photos/scene.webp";
+import { existsSync } from "node:fs";
+// Prefer the cleaned render (scripts/clean-scene.mjs removes the clutter in front of the truck).
+const SRC = existsSync("source-photos/scene-clean.png") ? "source-photos/scene-clean.png" : "source-photos/scene.webp";
 const OUT = "public/img";
 const PAD = 256;
 mkdirSync(OUT, { recursive: true });

@@ -560,14 +560,16 @@ body {
 
 .bfly {
   position: absolute;
-  left: -17px;
-  top: -13px;
-  width: 34px;
-  height: 26px;
-  perspective: 90px;
+  left: -22px;
+  top: -18px;
+  width: 44px;
+  height: 36px;
+  perspective: 120px;
+  transform-origin: 50% 55%;
   cursor: pointer;
   pointer-events: auto;
-  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.35));
+  filter: drop-shadow(0 3px 3px rgb(0 0 0 / 0.35));
+  will-change: transform;
 }
 
 .bfly-wing {
@@ -575,7 +577,7 @@ body {
   top: 0;
   width: 50%;
   height: 100%;
-  animation: wing-l 0.083s ease-in-out infinite alternate;
+  animation: wing-l 0.15s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
 }
 
 .bfly-wing svg {
@@ -595,53 +597,82 @@ body {
   animation-name: wing-r;
 }
 
+/* In flight the wings sweep from almost flat to nearly closed; perched they open and close slowly. */
 @keyframes wing-l {
   from {
-    transform: rotateY(0deg);
+    transform: rotateY(-12deg);
   }
   to {
-    transform: rotateY(68deg);
+    transform: rotateY(74deg);
   }
 }
 
 @keyframes wing-r {
   from {
-    transform: rotateY(0deg);
+    transform: rotateY(12deg);
   }
   to {
-    transform: rotateY(-68deg);
+    transform: rotateY(-74deg);
+  }
+}
+
+.bfly[data-perched="1"] .bfly-wing {
+  animation-duration: 1.3s;
+  animation-name: perch-l;
+}
+
+.bfly[data-perched="1"] .bfly-wing-r {
+  animation-name: perch-r;
+}
+
+@keyframes perch-l {
+  from {
+    transform: rotateY(18deg);
+  }
+  to {
+    transform: rotateY(62deg);
+  }
+}
+
+@keyframes perch-r {
+  from {
+    transform: rotateY(-18deg);
+  }
+  to {
+    transform: rotateY(-62deg);
   }
 }
 
 .bfly-body {
   position: absolute;
   left: 50%;
-  top: 22%;
-  width: 3px;
-  height: 58%;
-  margin-left: -1.5px;
+  top: 30%;
+  width: 3.5px;
+  height: 52%;
+  margin-left: -1.75px;
   border-radius: 2px;
-  background: var(--ink);
+  background: linear-gradient(#2a2a2a, #111);
 }
 
 .bfly-body::before,
 .bfly-body::after {
   content: "";
   position: absolute;
-  top: -5px;
+  top: -7px;
   width: 1px;
-  height: 6px;
-  background: var(--ink);
+  height: 8px;
+  border-radius: 1px;
+  background: #111;
 }
 
 .bfly-body::before {
   left: -1px;
-  transform: rotate(-25deg);
+  transform: rotate(-28deg);
 }
 
 .bfly-body::after {
   right: -1px;
-  transform: rotate(25deg);
+  transform: rotate(28deg);
 }
 
 .bfly-bubble {
@@ -662,10 +693,10 @@ body {
 }
 
 .stage[data-fx="lite"] .bfly {
-  left: -13px;
-  top: -10px;
-  width: 26px;
-  height: 20px;
+  left: -16px;
+  top: -13px;
+  width: 32px;
+  height: 26px;
 }
 
 .stage[data-fx="lite"] .bfly-bubble {
