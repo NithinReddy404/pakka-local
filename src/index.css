@@ -1840,3 +1840,49 @@ body {
     opacity: 0.75;
   }
 }
+
+/* ================= Scrollbars: thin, translucent, no track ================= */
+
+.mb-scroll,
+.order-drawer,
+.dlg-scroll,
+.photo-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(60 40 10 / 0.22) transparent;
+}
+
+.dlg-scroll {
+  scrollbar-color: rgb(255 255 255 / 0.22) transparent;
+}
+
+.mb-scroll::-webkit-scrollbar,
+.order-drawer::-webkit-scrollbar,
+.dlg-scroll::-webkit-scrollbar,
+.photo-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.mb-scroll::-webkit-scrollbar-track,
+.order-drawer::-webkit-scrollbar-track,
+.dlg-scroll::-webkit-scrollbar-track,
+.photo-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mb-scroll::-webkit-scrollbar-thumb,
+.order-drawer::-webkit-scrollbar-thumb,
+.photo-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(60 40 10 / 0.22);
+}
+
+.dlg-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.22);
+}
+
+.mb-scroll:hover::-webkit-scrollbar-thumb,
+.order-drawer:hover::-webkit-scrollbar-thumb {
+  background: rgb(60 40 10 / 0.36);
+}
