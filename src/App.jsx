@@ -1,53 +1,112 @@
-import { useCallback, useRef, useState } from 'react'
-import Hero from './components/Hero.jsx'
-import Gallery from './components/Gallery.jsx'
-import Footer from './components/Footer.jsx'
-import MenuOverlay from './components/MenuOverlay.jsx'
-import { warmMenu } from './warmMenu.js'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Scene from './components/Scene.jsx'
+import Dialogue from './components/Dialogue.jsx'
+import MenuPanel from './components/MenuPanel.jsx'
+import LangSwitch from './components/LangSwitch.jsx'
+import { pauseWhileHidden, prefersReducedMotion, wait } from './motion.js'
+import { CART_PERSON, PAN_START_X } from './scene.js'
+import { LangContext, STRINGS, initialLang, saveLang } from './i18n.js'
 
-const OVERLAY_DELAY_MS = 220
-const MENU_DECODE_TIMEOUT_MS = 1500
-const delay = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms))
+// The menu panel mounts part-way through the camera dolly and grows out of the board.
+const PANEL_DELAY_MS = 380
 
 export default function App() {
+  const [lang, setLangState] = useState(initialLang)
   const [menuOpen, setMenuOpen] = useState(false)
-  // The hotspot button lives in <Hero>; focus returns here when the menu closes.
-  const hotspotRef = useRef(null)
-  const heroApi = useRef(null) // imperative camera controls exposed by <Hero>
-  const busy = useRef(false) // ignore clicks while the open / close transition runs
+  const [speaker, setSpeaker] = useState(null) // null | 'truck' | 'cart'
+  const sceneApi = useRef(null)
+  const menuBtnRef = useRef(null)
+  const counterBtnRef = useRef(null)
+  const cartBtnRef = useRef(null)
+  const busy = useRef(false)
+  const afterDialogue = useRef(null)
 
-  // Open: the camera starts dollying into the board right away; the overlay mounts 220ms
-  // later (immediately under reduced motion) and takes over the zoom.
+  useEffect(() => pauseWhileHidden(), [])
+  useEffect(() => {
+    document.documentElement.lang = lang
+  }, [lang])
+
+  const i18n = useMemo(
+    () => ({
+      lang,
+      s: STRINGS[lang] ?? STRINGS.en,
+      setLang: (code) => {
+        if (!STRINGS[code]) return
+        saveLang(code)
+        setLangState(code)
+      },
+    }),
+    [lang],
+  )
+
   const openMenu = useCallback(() => {
     if (busy.current) return
     busy.current = true
-    // Page behind is inert from the first click, so nothing (a scene switch, say) can
-    // change mid-dolly. The overlay's own cleanup lifts it again on close.
+    // Inert from the first click so nothing in the scene changes mid-dolly; the panel's
+    // own cleanup lifts it again.
     const root = document.getElementById('root')
     if (root) root.inert = true
-    heroApi.current?.dollyIn()
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    // Mount once the camera has started AND the menu photo is decoded (capped), so the
-    // first open flies a real photo instead of an empty sheet.
-    Promise.all([
-      Promise.race([warmMenu(), delay(MENU_DECODE_TIMEOUT_MS)]),
-      delay(reduce ? 0 : OVERLAY_DELAY_MS),
-    ]).then(() => setMenuOpen(true))
+    sceneApi.current?.dollyIn()
+    wait(prefersReducedMotion() ? 0 : PANEL_DELAY_MS).then(() => setMenuOpen(true))
   }, [])
-  // Called by the overlay once its close transition (and the camera pull-out) is done.
+
   const closeMenu = useCallback(() => {
     setMenuOpen(false)
     busy.current = false
   }, [])
 
+  const talk = useCallback((who) => {
+    if (busy.current) return
+    sceneApi.current?.lookAt(who === 'cart' ? CART_PERSON.lookAtX : PAN_START_X)
+    setSpeaker(who)
+  }, [])
+
+  const endTalk = useCallback(
+    (reason) => {
+      if (reason === 'menu') afterDialogue.current = openMenu
+      setSpeaker(null)
+    },
+    [openMenu],
+  )
+  const speakerRef = useRef(null)
+  useEffect(() => {
+    if (speaker) speakerRef.current = speaker
+  }, [speaker])
+  const bye = useCallback(() => sceneApi.current?.wave(speakerRef.current), [])
+
+  // Runs after the dialogue has unmounted (and handed focus back), e.g. to open the menu.
+  useEffect(() => {
+    if (speaker || !afterDialogue.current) return
+    const next = afterDialogue.current
+    afterDialogue.current = null
+    next()
+  }, [speaker])
+
   return (
-    <>
-      <main>
-        <Hero onOpenMenu={openMenu} hotspotRef={hotspotRef} apiRef={heroApi} />
-        <Gallery />
+    <LangContext value={i18n}>
+      <main className="app">
+        <h1 className="sr-only">Pakka Local food truck, Chantilly, Virginia</h1>
+        <Scene
+          apiRef={sceneApi}
+          onOpenMenu={openMenu}
+          onTalk={talk}
+          menuBtnRef={menuBtnRef}
+          counterBtnRef={counterBtnRef}
+          cartBtnRef={cartBtnRef}
+          talking={!!speaker}
+        />
+        <LangSwitch />
       </main>
-      <Footer />
-      {menuOpen && <MenuOverlay onClose={closeMenu} returnFocusRef={hotspotRef} heroApi={heroApi} />}
-    </>
+      {speaker && (
+        <Dialogue
+          key={speaker}
+          speaker={speaker}
+          onClose={endTalk}
+          onBye={bye}
+          returnFocusRef={speaker === 'cart' ? cartBtnRef : counterBtnRef}
+        />
+      )}
+      {menuOpen && <MenuPanel onClose={closeMenu} sceneApi={sceneApi} returnFocusRef={menuBtnRef} />}
+    </LangContext>
   )
 }

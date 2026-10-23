@@ -1,12 +1,12 @@
 # Pakka Local
 
-Single-page website for **Pakka Local**, an Indian street food truck in Chantilly, Virginia.
+The website for **Pakka Local**, an Indian street food truck in Chantilly, Virginia, is one picture: a living, game-like 2.5D sunset scene of the real truck and the Chat Bandi cart. There is no header, footer or scrolling page. Visitors:
 
-- A full-screen photo of the real truck (night by default, day with the toggle).
-- Visitors click the menu board in the photo, or the small label beside it, to open the full menu: the photo of the real menu board in a zoom and pan viewer, plus a plain text version with every item and price.
-- A short "From the window" photo row and a footer. No invented hours, address or reviews.
+- **talk to the vendor** at the truck window, or to the woman at the chaat cart (dialogue panel),
+- **open the menu board** (the camera dollies into the A-frame board, and the board becomes a full-screen menu with an order tally, a text-your-order button and the photo of the real board),
+- pick one of five languages (English, తెలుగు, हिन्दी, தமிழ், മലയാളം) from the pill at the top right.
 
-Built with Vite, React 19 and Tailwind CSS v4. There is no backend and no routing, so the build output is plain static files.
+Built with Vite, React 19 and Tailwind CSS v4. No backend and no routing: the build output is plain static files.
 
 ## Run it
 
@@ -24,48 +24,55 @@ Requires Node 20.19 or newer (or 22.12+).
 
 | File | What it is |
 | --- | --- |
-| `src/scenes.js` | The two hero scenes (night, day): image files, size and the menu-board hotspot rectangle |
-| `src/menuData.js` | Text version of the menu, phone number and website link |
-| `src/components/Hero.jsx` | Full-screen photo, scene toggle, hotspot and label |
-| `src/components/MenuOverlay.jsx` | Menu viewer (zoom, pan, pinch, keyboard) and the text version |
-| `src/components/Gallery.jsx`, `Footer.jsx` | "From the window" row and footer |
-| `public/img/` | All photos, served at `/img/...` |
-| `source-photos/` | The original photos used to make `public/img/` |
-| `scripts/crop-images.mjs` | Image preparation script (below) |
-| `netlify.toml`, `vercel.json` | Hosting settings, read automatically |
+| `src/scene.js` | **Every coordinate of the scene, as data**: hotspots, the window and cart characters, layer polygons, depth of each layer, lights, clouds, birds, butterfly, layout rules |
+| `src/menuData.js` | The menu as printed on the board, phone number and website. The only source of dishes and prices |
+| `src/dialogue.js` | The vendor's and the chaat cart's dialogue trees (built from `menuData.js` + `i18n.js`) |
+| `src/i18n.js` | Every UI string and dialogue line in the five languages, plus the dish notes |
+| `src/dishInfo.js` | One-sentence general description of each dish (English; translations in `i18n.js`) |
+| `src/orderStore.js` | The order tally (outside React state, so a change re-renders only what shows it) |
+| `src/components/Scene.jsx` | Stage, layout, pan / tilt / gyro, layers, entrance, camera dolly |
+| `src/components/SceneFx.jsx` | Clouds, birds, sunset glow, steam, dust motes, tree displacement filter |
+| `src/components/Vendor.jsx` | The two SVG characters (man at the window, woman at the cart), idle life and wave |
+| `src/components/Butterfly.jsx` | The butterfly that roams around the menu board |
+| `src/components/Dialogue.jsx` | Dialogue panel (typewriter, choices, keyboard, swipe to close) |
+| `src/components/MenuPanel.jsx`, `Order.jsx`, `Stepper.jsx`, `PhotoViewer.jsx`, `Mandala.jsx` | The menu board panel, order drawer and button, quantity control, board photo viewer, corner ornaments |
+| `public/img/` | `scene.webp` (+ `-1200`, `-tiny`), `menu.webp`, `logo.png`, `logo-256.png` |
+| `scripts/prepare-scene.mjs` | Builds the scene images from `source-photos/scene.webp` |
+| `scripts/crop-images.mjs` | Builds `menu.webp` and the logos from `source-photos/` |
 
-## Replacing the photos
+## How the scene works
 
-`scripts/crop-images.mjs` turns the original screenshots in `source-photos/` (`1.webp` ... `9.webp`) into the web files in `public/img/`:
+One image, `public/img/scene.webp` (1750x1212), is the whole site. The real render is rows 256..956; the top and bottom 256 px are generated sky and gravel so the picture can cover any screen.
 
-- `1.webp` becomes `hero-night.webp` and `hero-night-800.webp` (the night hero). It paints over the screenshot's info card and thumbnail by mirroring a patch of nearby sky, then crops to 1202x800.
-- `2.webp` becomes `hero-day.webp` and `hero-day-800.webp` (the day hero, cropped to 1200x735; the source has a 12px black column at its left edge that the crop skips), and also the round logo, in two sizes: `logo-256.png` (the favicon) and `logo.png` (the 96px mark shown in the hero).
-- `4.webp` becomes `menu.webp` (the menu board, with the bottom watermark strip cropped off).
-- `3.webp`, `6.webp`, `7.webp`, `8.webp` become `food-noodles-800.webp`, `food-sandwich-800.webp`, `chat-cart-night-800.webp` and `chat-bandi-800.webp` for the photo row.
+- **Layout.** Landscape screens (aspect 1.2 or wider) are covered, cropping the generated sky first. Portrait screens show the full height and the visitor drags (or tilts the phone) to pan; the first view centres the truck window.
+- **Depth.** Copies of the image are cut out with clip-path polygons and stacked in a 3D container: sky at the back, the trees, the base (the image minus sky and trees), the truck lamps, the cart and the ground in front. Each layer is scaled so it registers exactly at rest; tilting with the mouse (or the drag / gyro on phones) reveals the depth.
+- **Life.** Trees sway (plus a displacement shimmer on desktop), clouds drift, the sunset breathes, birds cross, lamps flicker, steam rises from the cart, dust drifts over the gravel, the two people breathe, blink, look around and wave when you hover their counter. Everything is transform / opacity / filter only, pauses when the tab is hidden or the menu is open, and is switched off for visitors who prefer reduced motion.
 
-All crop rectangles are written out in the script, so each one can be adjusted there. To swap photos:
+### Adjusting coordinates
 
-1. Put your original photos in `source-photos/`, using the same file names (`1.webp` to `8.webp`), or edit the file names and crop rectangles in `scripts/crop-images.mjs`.
-2. Run `node scripts/crop-images.mjs`.
-3. Look at the result with `npm run dev`.
-4. If a hero photo's size changed, update `width` and `height` in `src/scenes.js`. If you changed the size of a photo-row image, update its `width` and `height` in `src/components/Gallery.jsx`. If you changed `menu.webp`, update `IMG` in `src/components/MenuOverlay.jsx`.
-5. Re-check the hotspot (next section).
+All numbers in `src/scene.js` are **percent of the full 1750x1212 image**: a rect is `{ left, top, width, height }` (top-left corner and size), a point is `{ x, y }`, a polygon is a list of `[x, y]`. Because everything lives inside a box with the image's proportions, it stays glued to the picture at every screen size.
 
-## Adjusting the hotspot
+To tune a hotspot, run `npm run dev`, hover it (a thin outline shows), nudge the numbers by half a percent and save. The same goes for the vendor's window (`WINDOW_INTERIOR`), the woman at the cart (`CART_PERSON`; `occluder` is the polygon of food boxes drawn in front of her), the speech bubbles (`BUBBLES`), lamps and steam (`LIGHTS`) and the layer polygons (`POLYGONS`).
 
-The invisible button over the menu board is defined in `src/scenes.js`, once per scene:
+### Regenerating the scene
 
-```js
-hotspot: { left: 67, top: 62, width: 8.5, height: 24.5 }
-```
+1. Put the new render at `source-photos/scene.webp`.
+2. Run `node scripts/prepare-scene.mjs`. It writes `scene.webp`, `scene-1200.webp` and `scene-tiny.webp` to `public/img/`.
+3. If the size of the render changed, update `SCENE_W` / `SCENE_H` in `src/scene.js`, the `SEAM` row and every coordinate that moved.
 
-All four numbers are percentages of the photo itself: `left` and `top` are the distance of the rectangle's top-left corner from the photo's top-left corner, `width` and `height` are its size. Because the rectangle lives inside a box with the photo's own proportions, it stays on the board at every screen size. The "Click on the menu..." label is placed automatically to the left of the board, so it never covers it.
+## The dialogue
 
-To tune it, run `npm run dev`, hover the board (a thin outline appears on hover), nudge the numbers by half a percent, and save.
+`src/dialogue.js` builds two trees from `src/menuData.js` (dishes, prices, phone) and `src/i18n.js` (wording): the truck vendor (greeting, what we serve with prices per section, items without chicken or egg, add-ons, how to order, where we are) and the chaat cart (what chaat and pani puri are, what the cart sells, how to order). Lists of items are always derived from the menu data, never typed by hand. To change a line, edit it in `src/i18n.js` for every language.
+
+Keyboard: arrow keys move between choices, number keys pick one, Space shows the whole line at once, Esc closes. On phones the panel is a bottom sheet that can be swiped down.
+
+## The menu and the order
+
+The menu panel is styled like the real A-frame board. Each row has a "+ Add" pill that becomes a "− n +" stepper with a remove button; the yellow order pill shows the running count and total. The order drawer offers **Text your order** (opens the phone's SMS app to the board's number with the order filled in, in English; nothing is sent by the site), **Call to order**, and **Share order image** (a receipt PNG through the share sheet, or a download). The "i" button on each dish shows a general description of what the dish usually is.
 
 ## Hosting
 
-The site is static. `npm run build` produces a `dist/` folder, and that folder is the whole website. All photo paths are absolute (`/img/...`) and there is no routing, so any host works as long as `dist/` is served from the root of a domain.
+The site is static. `npm run build` produces a `dist/` folder, and that folder is the whole website. All image paths are absolute (`/img/...`) and there is no routing, so any host works as long as `dist/` is served from the root of a domain.
 
 ### a) Netlify drag and drop (fastest, no account linking)
 
@@ -96,7 +103,7 @@ The site is static. `npm run build` produces a `dist/` folder, and that folder i
 A GitHub Pages "project" site lives under a sub-path (`https://YOUR-NAME.github.io/REPO-NAME/`), so Vite must be told about it.
 
 1. Push this project to a GitHub repository.
-2. In `vite.config.js`, add `base: '/REPO-NAME/',` inside `defineConfig({ ... })`, with `REPO-NAME` being the repository name exactly. (If the repository is called `YOUR-NAME.github.io`, or you use your own domain, keep the default `base: '/'`.) Photo paths in the page code and in `index.html` follow `base` automatically.
+2. In `vite.config.js`, add `base: '/REPO-NAME/',` inside `defineConfig({ ... })`, with `REPO-NAME` being the repository name exactly. (If the repository is called `YOUR-NAME.github.io`, or you use your own domain, keep the default `base: '/'`.) Image paths in the page code follow `base` automatically; also update the `/img/...` paths in `index.html` (favicon and preload) to `/REPO-NAME/img/...`.
 3. Run `npm install --save-dev gh-pages`.
 4. Run `npx gh-pages -d dist` after `npm run build`, or in one go: `npm run build && npx gh-pages -d dist`. This pushes the built files to a branch called `gh-pages`.
 5. On GitHub, open the repository, then Settings, then Pages. Under "Build and deployment" choose "Deploy from a branch", pick the `gh-pages` branch and the `/ (root)` folder, and save.
@@ -106,15 +113,13 @@ For Netlify, Vercel and a custom domain, never set `base`: leave it at `/`.
 
 ### Before you publish
 
-- [ ] If the phone number or website changes, edit `src/menuData.js` (`PHONE_DISPLAY`, `PHONE_HREF`, `SITE_URL`). The number also appears in the `tel:` links, which come from the same file.
-- [ ] If the menu changes, replace `public/img/menu.webp` and edit the text version in `src/menuData.js` to match the board exactly.
-- [ ] After swapping photos, re-run `node scripts/crop-images.mjs`, then update image sizes as described above.
-- [ ] Re-check the hotspot in `src/scenes.js` (hover the board in both Night and Day, at a phone width and a desktop width).
+- [ ] If the phone number or website changes, edit `src/menuData.js` (`PHONE_DISPLAY`, `PHONE_HREF`, `SITE_URL`). The call and text links come from the same place.
+- [ ] If the menu changes, replace `public/img/menu.webp`, edit `src/menuData.js` to match the board exactly, and add a note for any new dish to `src/dishInfo.js` and to `dishes` in `src/i18n.js`.
 - [ ] Run `npm run build` and `npm run lint`; both must finish without errors.
-- [ ] Open the live site on a phone: tap the board, check the menu is readable, close it with the Close button.
+- [ ] Open the live site on a phone: drag around, talk to the vendor, tap the menu board, add an item, close the menu.
 
 ## Notes
 
-- Cache headers: `public/_headers` is copied into `dist/`, so Netlify applies it for Git deploys and for a drag-and-drop of `dist/` alike. It caches `/assets/*` (content-hashed) for a year, `/img/*` for one day, and always revalidates `/img/menu.webp` so a new menu board shows up immediately. `vercel.json` carries the same rules for Vercel. GitHub Pages ignores both files and sets its own caching.
-- Motion: on load the scene fades up from black while easing from a slight zoom (entrance), then drifts very slowly (Ken Burns). On desktop with a mouse the photo and the label shift slightly against the cursor (parallax), and the photo lags the page a little as you scroll. On the night scene the OPEN sign flickers and the two lamps glow; these lights are data in `src/scenes.js` (`glows`: `cx`/`cy` is the centre and `width`/`height` the size, in percent of the photo; the day scene has none). Clicking the board zooms the camera into it, and the board becomes the full menu; closing reverses it. Everything moves with transform and opacity only, and all of it is switched off for visitors who prefer reduced motion (they get a still photo and instant changes).
-- Accessibility: the menu opens as a modal dialog (focus is trapped and returned to the board button on close), `Esc` closes it, `+` `-` `0` zoom, arrow keys pan when zoomed, and animation is switched off for visitors who prefer reduced motion.
+- Cache headers: `public/_headers` is copied into `dist/`, so Netlify applies it for Git deploys and for a drag-and-drop of `dist/` alike. It caches `/assets/*` (content-hashed) for a year, `/img/*` (including the scene images) for one day, and always revalidates `/img/menu.webp` so a new menu board shows up immediately. `vercel.json` carries the same rules for Vercel. GitHub Pages ignores both files and sets its own caching.
+- The display font (Archivo Black) loads from Google Fonts; Telugu, Hindi, Tamil and Malayalam use the system font.
+- Accessibility: every hotspot is a real button reachable with Tab, the dialogue and the menu are modal dialogs (focus trapped and returned, Esc closes), screen readers get the full dialogue text at once, and reduced-motion visitors get a still scene with instant transitions.
