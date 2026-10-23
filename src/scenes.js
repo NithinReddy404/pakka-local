@@ -30,10 +30,10 @@ export const SCENES = [
     label: 'Day',
     alt: 'The Pakka Local food truck by day, with the Chat Bandi cart on the left and the menu board at the far right',
     src: img('hero-day.webp'),
-    srcSet: `${img('hero-day-800.webp')} 800w, ${img('hero-day.webp')} 1212w`,
-    width: 1212,
+    srcSet: `${img('hero-day-800.webp')} 800w, ${img('hero-day.webp')} 1200w`,
+    width: 1200,
     height: 735,
-    hotspot: { left: 82.5, top: 65.3, width: 5.2, height: 12.5 },
+    hotspot: { left: 82.3, top: 65.3, width: 5.2, height: 12.5 },
     glows: [],
   },
 ]

@@ -39,7 +39,7 @@ Requires Node 20.19 or newer (or 22.12+).
 `scripts/crop-images.mjs` turns the original screenshots in `source-photos/` (`1.webp` ... `9.webp`) into the web files in `public/img/`:
 
 - `1.webp` becomes `hero-night.webp` and `hero-night-800.webp` (the night hero). It paints over the screenshot's info card and thumbnail by mirroring a patch of nearby sky, then crops to 1202x800.
-- `2.webp` becomes `hero-day.webp` and `hero-day-800.webp` (the day hero, cropped to 1212x735), and also the round logo `logo.png` (a 110x110 crop, scaled to 256x256).
+- `2.webp` becomes `hero-day.webp` and `hero-day-800.webp` (the day hero, cropped to 1200x735; the source has a 12px black column at its left edge that the crop skips), and also the round logo, in two sizes: `logo-256.png` (the favicon) and `logo.png` (the 96px mark shown in the hero).
 - `4.webp` becomes `menu.webp` (the menu board, with the bottom watermark strip cropped off).
 - `3.webp`, `6.webp`, `7.webp`, `8.webp` become `food-noodles-800.webp`, `food-sandwich-800.webp`, `chat-cart-night-800.webp` and `chat-bandi-800.webp` for the photo row.
 
@@ -96,7 +96,7 @@ The site is static. `npm run build` produces a `dist/` folder, and that folder i
 A GitHub Pages "project" site lives under a sub-path (`https://YOUR-NAME.github.io/REPO-NAME/`), so Vite must be told about it.
 
 1. Push this project to a GitHub repository.
-2. In `vite.config.js`, add `base: '/REPO-NAME/',` inside `defineConfig({ ... })`, with `REPO-NAME` being the repository name exactly. (If the repository is called `YOUR-NAME.github.io`, or you use your own domain, keep the default `base: '/'`.) Photo paths follow `base` automatically. The `<link rel="preload">` line in `index.html` still points at `/img/...`; delete that one line for a sub-path site.
+2. In `vite.config.js`, add `base: '/REPO-NAME/',` inside `defineConfig({ ... })`, with `REPO-NAME` being the repository name exactly. (If the repository is called `YOUR-NAME.github.io`, or you use your own domain, keep the default `base: '/'`.) Photo paths in the page code and in `index.html` follow `base` automatically.
 3. Run `npm install --save-dev gh-pages`.
 4. Run `npx gh-pages -d dist` after `npm run build`, or in one go: `npm run build && npx gh-pages -d dist`. This pushes the built files to a branch called `gh-pages`.
 5. On GitHub, open the repository, then Settings, then Pages. Under "Build and deployment" choose "Deploy from a branch", pick the `gh-pages` branch and the `/ (root)` folder, and save.
@@ -115,5 +115,6 @@ For Netlify, Vercel and a custom domain, never set `base`: leave it at `/`.
 
 ## Notes
 
-- Cache headers: `netlify.toml` caches `/assets/*` (content-hashed) for a year and `/img/*` for 30 days. If you replace a photo and still see the old one, hard refresh or wait for the cache to expire.
+- Cache headers: `public/_headers` is copied into `dist/`, so Netlify applies it for Git deploys and for a drag-and-drop of `dist/` alike. It caches `/assets/*` (content-hashed) for a year, `/img/*` for one day, and always revalidates `/img/menu.webp` so a new menu board shows up immediately. `vercel.json` carries the same rules for Vercel. GitHub Pages ignores both files and sets its own caching.
+- Motion: on load the scene fades up from black while easing from a slight zoom (entrance), then drifts very slowly (Ken Burns). On desktop with a mouse the photo and the label shift slightly against the cursor (parallax), and the photo lags the page a little as you scroll. On the night scene the OPEN sign flickers and the two lamps glow; these lights are data in `src/scenes.js` (`glows`: `cx`/`cy` is the centre and `width`/`height` the size, in percent of the photo; the day scene has none). Clicking the board zooms the camera into it, and the board becomes the full menu; closing reverses it. Everything moves with transform and opacity only, and all of it is switched off for visitors who prefer reduced motion (they get a still photo and instant changes).
 - Accessibility: the menu opens as a modal dialog (focus is trapped and returned to the board button on close), `Esc` closes it, `+` `-` `0` zoom, arrow keys pan when zoomed, and animation is switched off for visitors who prefer reduced motion.

@@ -88,8 +88,9 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
       Promise.resolve(hero?.dollyOut()).then(onClose)
       return
     }
+    api.current?.resetInstant() // fly the whole board, not whatever part is zoomed in
     const board = hero.getRestRect() // measured before the camera starts moving
-    const from = sheet.getBoundingClientRect() // current rect, including any user zoom
+    const from = sheet.getBoundingClientRect()
     setOriginAtCenter(wrap, from)
     const heroDone = hero.dollyOut()
     const anims = [
@@ -142,11 +143,18 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
       sheet.style.width = `${v.fw}px`
       sheet.style.height = `${v.fh}px`
     }
-    // Screen position of the viewer, read only when the user acts (never mid-transition).
+    // Screen position of the viewer. Re-read only after a resize or when a transition has
+    // ended (never mid-transition, when the wrapper is scaled), not on every event.
+    let rectStale = true
     const syncRect = () => {
+      if (!rectStale) return
       const r = viewer.getBoundingClientRect()
       v.left = r.left
       v.top = r.top
+      rectStale = false
+    }
+    const markStale = () => {
+      rectStale = true
     }
     const constrain = () => {
       const W = v.fw * v.s
@@ -183,6 +191,8 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
       zoomIn: () => !animating.current && zoomBy(BUTTON_STEP),
       zoomOut: () => !animating.current && zoomBy(1 / BUTTON_STEP),
       reset: () => !animating.current && reset(true),
+      resetInstant: () => reset(false),
+      markStale,
     }
 
     measure()
@@ -191,8 +201,10 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
       measure()
       constrain()
       apply(false)
+      markStale()
     })
     ro.observe(viewer)
+    window.addEventListener('resize', markStale)
 
     // --- pointers: drag to pan, two fingers to pinch, double tap / click to toggle ---
     const ptrs = new Map()
@@ -204,7 +216,7 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
     let lastToggle = 0
 
     const pinchState = () => {
-      const [a, b] = [...ptrs.values()]
+      const [a, b] = [...ptrs.values()] // only the first two fingers drive the pinch
       return {
         dist: Math.hypot(a.x - b.x, a.y - b.y) || 1,
         mx: (a.x + b.x) / 2 - v.left,
@@ -222,7 +234,7 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
         downX = e.clientX
         downY = e.clientY
         viewer.dataset.grab = '1'
-      } else if (ptrs.size === 2) {
+      } else if (ptrs.size >= 2) {
         pinch = pinchState()
         moved = true
       }
@@ -238,7 +250,7 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
         if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) moved = true
         constrain()
         apply(false)
-      } else if (ptrs.size === 2 && pinch) {
+      } else if (ptrs.size >= 2 && pinch) {
         p.x = e.clientX
         p.y = e.clientY
         const next = pinchState()
@@ -251,7 +263,7 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
     const onUp = (e) => {
       if (!ptrs.has(e.pointerId)) return
       ptrs.delete(e.pointerId)
-      pinch = null
+      pinch = ptrs.size >= 2 ? pinchState() : null
       if (ptrs.size > 0) return
       delete viewer.dataset.grab
       if (e.type === 'pointercancel' || moved) return
@@ -282,9 +294,23 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
       e.preventDefault()
       if (animating.current) return
       syncRect()
+      let dx = e.deltaX
       let dy = e.deltaY
-      if (e.deltaMode === 1) dy *= 16
-      else if (e.deltaMode === 2) dy *= viewer.clientHeight
+      if (e.deltaMode === 1) {
+        dx *= 16
+        dy *= 16
+      } else if (e.deltaMode === 2) {
+        dx *= viewer.clientWidth
+        dy *= viewer.clientHeight
+      }
+      if (!e.ctrlKey && (v.s > 1 || v.fh > v.vh)) {
+        // Zoomed in, or a tall board on a phone: the wheel scrolls the board.
+        v.tx -= dx
+        v.ty -= dy
+        constrain()
+        apply(false)
+        return
+      }
       const f = Math.exp(-dy * (e.ctrlKey ? 0.01 : 0.002))
       zoomAt(e.clientX - v.left, e.clientY - v.top, v.s * f, false)
     }
@@ -294,6 +320,23 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
     viewer.addEventListener('pointercancel', onUp)
     viewer.addEventListener('dblclick', onDblClick)
     viewer.addEventListener('wheel', onWheel, { passive: false })
+
+    // Safari trackpad pinch arrives as gesture events, not ctrl+wheel.
+    let gestureBase = 1
+    const onGestureStart = (e) => {
+      e.preventDefault()
+      gestureBase = v.s
+    }
+    const onGestureChange = (e) => {
+      e.preventDefault()
+      if (animating.current) return
+      syncRect()
+      zoomAt(e.clientX - v.left, e.clientY - v.top, gestureBase * e.scale, false)
+    }
+    const onGestureEnd = (e) => e.preventDefault()
+    viewer.addEventListener('gesturestart', onGestureStart)
+    viewer.addEventListener('gesturechange', onGestureChange)
+    viewer.addEventListener('gestureend', onGestureEnd)
 
     // --- keyboard ---
     const onKey = (e) => {
@@ -322,7 +365,7 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
         }
         return
       }
-      if (animating.current || e.metaKey || e.ctrlKey || e.altKey) return
+      if (animating.current || showTextRef.current || e.metaKey || e.ctrlKey || e.altKey) return
       if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
         e.preventDefault()
         zoomBy(BUTTON_STEP)
@@ -332,7 +375,7 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
       } else if (e.key === '0') {
         e.preventDefault()
         reset(true)
-      } else if (!showTextRef.current && e.key.startsWith('Arrow') && (v.s > 1 || v.fh > v.vh)) {
+      } else if (e.key.startsWith('Arrow') && (v.s > 1 || v.fh > v.vh)) {
         e.preventDefault()
         if (e.key === 'ArrowLeft') v.tx += KEY_PAN
         if (e.key === 'ArrowRight') v.tx -= KEY_PAN
@@ -346,12 +389,16 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
 
     return () => {
       ro.disconnect()
+      window.removeEventListener('resize', markStale)
       viewer.removeEventListener('pointerdown', onDown)
       viewer.removeEventListener('pointermove', onMove)
       viewer.removeEventListener('pointerup', onUp)
       viewer.removeEventListener('pointercancel', onUp)
       viewer.removeEventListener('dblclick', onDblClick)
       viewer.removeEventListener('wheel', onWheel)
+      viewer.removeEventListener('gesturestart', onGestureStart)
+      viewer.removeEventListener('gesturechange', onGestureChange)
+      viewer.removeEventListener('gestureend', onGestureEnd)
       document.removeEventListener('keydown', onKey)
       api.current = null
     }
@@ -402,6 +449,7 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
         animating.current = false
         anims.forEach((a) => a.cancel())
         wrap.style.transformOrigin = ''
+        api.current?.markStale()
       })
     return () => {
       alive = false
@@ -423,9 +471,9 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
       }}
     >
       <div ref={backdropRef} className="menu-backdrop" aria-hidden="true" />
-      <div ref={headerRef} className="flex shrink-0 items-center justify-between gap-3 px-3 py-3 sm:px-6">
+      <div ref={headerRef} className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-3 sm:px-6">
         <p className="m-0 text-lg font-semibold text-white">Menu</p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             className={toolBtn}
@@ -457,7 +505,10 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
             title="Reset zoom (0)"
             onClick={() => api.current?.reset()}
           >
-            Reset
+            <span aria-hidden="true" className="text-lg leading-none min-[360px]:hidden">
+              ↺
+            </span>
+            <span className="hidden min-[360px]:inline">Reset</span>
           </button>
           <button
             ref={closeBtnRef}
@@ -470,7 +521,7 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
             <span aria-hidden="true" className="text-lg leading-none">
               ×
             </span>
-            Close
+            <span className="hidden min-[360px]:inline">Close</span>
           </button>
         </div>
       </div>
@@ -483,6 +534,7 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
               width={IMG.width}
               height={IMG.height}
               alt="Photo of the Pakka Local menu board. A text version of every item and price is available below the board."
+              decoding="async"
               draggable="false"
             />
           </div>
@@ -496,16 +548,16 @@ function MenuOverlay({ onClose, returnFocusRef, heroApi }) {
           tabIndex={showText ? 0 : undefined}
           className={
             showText
-              ? 'absolute inset-0 overflow-y-auto bg-[#0b0b0e]/95 px-5 py-6 sm:px-10'
+              ? 'absolute inset-0 touch-pan-y overflow-y-auto bg-[#0b0b0e]/95 px-5 py-6 sm:px-10'
               : 'sr-only'
           }
         >
           <h2 className="mx-auto mb-6 max-w-4xl text-xl font-semibold text-white">Menu, text version</h2>
           <div className="menu-text-list mx-auto max-w-4xl">
-            {MENU_SECTIONS.map((section) => (
-              <section key={section.title} aria-labelledby={`${textId}-${section.title}`}>
+            {MENU_SECTIONS.map((section, i) => (
+              <section key={section.title} aria-labelledby={`${textId}-s${i}`}>
                 <h3
-                  id={`${textId}-${section.title}`}
+                  id={`${textId}-s${i}`}
                   className="m-0 mb-2 border-b border-white/25 pb-2 text-base font-semibold uppercase tracking-widest text-ember"
                 >
                   {section.title}

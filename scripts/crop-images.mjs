@@ -32,10 +32,11 @@ night = await mirrorPatch(night, { left: 0, top: 720, width: 45, height: 80 });
 night = sharp(await night.extract({ left: 0, top: 0, width: 1202, height: 800 }).png().toBuffer());
 await write(night, "hero-night", [null, 800]);
 
-// Day hero (2.webp, 1242x908)
+// Day hero (2.webp, 1242x908); the source has a 12px black column at the left edge,
+// so the crop starts at x=12 and the result is 1200x735.
 let day = sharp(`${SRC}/2.webp`);
 day = await mirrorPatch(day, { left: 0, top: 0, width: 232, height: 138 });
-day = sharp(await day.extract({ left: 0, top: 0, width: 1212, height: 735 }).png().toBuffer());
+day = sharp(await day.extract({ left: 12, top: 0, width: 1200, height: 735 }).png().toBuffer());
 await write(day, "hero-day", [null, 800]);
 
 // Logo roundel from the day photo -> favicon (256) and brand mark (96)

@@ -2,10 +2,10 @@ import { memo } from 'react'
 import { img } from '../imgPath.js'
 
 const PHOTOS = [
-  { src: img('food-noodles-800.webp'), width: 800, height: 627, caption: 'Chicken noodles & chicken pakodi' },
+  { src: img('food-noodles-800.webp'), width: 800, height: 627, caption: 'Noodles, fried rice and pakodi' },
   { src: img('food-sandwich-800.webp'), width: 800, height: 474, caption: 'Grilled sandwich' },
-  { src: img('chat-cart-night-800.webp'), width: 800, height: 553, caption: 'Chat Bandi cart at night' },
-  { src: img('chat-bandi-800.webp'), width: 705, height: 820, caption: 'Pani puri at the Chat Bandi cart' },
+  { src: img('chat-cart-night-800.webp'), width: 800, height: 553, caption: 'The Chat Bandi cart at night' },
+  { src: img('chat-bandi-800.webp'), width: 705, height: 820, caption: 'The Chat Bandi cart, ready for service' },
 ]
 
 function Gallery() {

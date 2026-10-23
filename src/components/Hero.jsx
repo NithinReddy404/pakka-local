@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useImperativeHandle, useRef, useState } f
 import { DEFAULT_SCENE_ID, HERO_SIZES, SCENES } from '../scenes.js'
 import { img } from '../imgPath.js'
 import { PHONE_DISPLAY, PHONE_HREF } from '../menuData.js'
+import { warmMenu } from '../warmMenu.js'
 
 const byId = (id) => SCENES.find((s) => s.id === id) ?? SCENES[0]
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
@@ -65,6 +66,7 @@ function Hero({ onOpenMenu, hotspotRef, apiRef }) {
     const run = () => {
       timer = window.setTimeout(() => {
         for (const s of SCENES) preload(s).decode?.().catch(() => {})
+        warmMenu() // so the first open flies a decoded photo, not an empty sheet
       }, 300)
     }
     if (document.readyState === 'complete') run()
@@ -97,6 +99,15 @@ function Hero({ onOpenMenu, hotspotRef, apiRef }) {
     const stage = stageRef.current
     const cleanups = []
 
+    // Stage size is cached by a ResizeObserver: no layout reads on pointermove or scroll.
+    const size = { w: stage.clientWidth || 1, h: stage.clientHeight || 1 }
+    const sizeObserver = new ResizeObserver(() => {
+      size.w = stage.clientWidth || 1
+      size.h = stage.clientHeight || 1
+    })
+    sizeObserver.observe(stage)
+    cleanups.push(() => sizeObserver.disconnect())
+
     if (window.matchMedia('(pointer: fine)').matches) {
       let raf = 0
       let nx = 0
@@ -118,9 +129,8 @@ function Hero({ onOpenMenu, hotspotRef, apiRef }) {
       }
       const onMove = (e) => {
         if (parallaxLocked.current || e.pointerType === 'touch') return
-        const r = stage.getBoundingClientRect()
-        nx = clamp(((e.clientX - r.left) / r.width) * 2 - 1, -1, 1)
-        ny = clamp(((e.clientY - r.top) / r.height) * 2 - 1, -1, 1)
+        nx = clamp((e.clientX / size.w) * 2 - 1, -1, 1)
+        ny = clamp(((e.clientY + window.scrollY) / size.h) * 2 - 1, -1, 1) // stage sits at the page top
         schedule()
       }
       const recentre = () => {
@@ -150,7 +160,7 @@ function Hero({ onOpenMenu, hotspotRef, apiRef }) {
         }
       }
       const onScroll = () => {
-        const past = window.scrollY > stage.offsetHeight
+        const past = window.scrollY > size.h
         if (past !== off) {
           off = past
           if (past) stage.dataset.offscreen = '1' // also pauses the endless animations
@@ -180,6 +190,14 @@ function Hero({ onOpenMenu, hotspotRef, apiRef }) {
       const clearLive = () => {
         live.current.forEach((a) => a.cancel())
         live.current = []
+      }
+      // The endless drift / neon / pulse pause while the menu covers the page.
+      const pauseAnimations = () => {
+        stageRef.current.dataset.offscreen = '1'
+      }
+      const resumeAnimations = () => {
+        const stage = stageRef.current
+        if (window.scrollY <= stage.clientHeight) delete stage.dataset.offscreen
       }
       const track = (el, keyframes, options) => {
         const a = el.animate(keyframes, { fill: 'forwards', ...options })
@@ -213,6 +231,7 @@ function Hero({ onOpenMenu, hotspotRef, apiRef }) {
           const vignettes = vignetteRefs.current
           parallaxLocked.current = true
           wiggleReset.current?.()
+          pauseAnimations()
           box.style.transformOrigin = `${h.left + h.width / 2}% ${h.top + h.height / 2}%`
           clearLive()
           labelAnim.current?.cancel()
@@ -241,10 +260,14 @@ function Hero({ onOpenMenu, hotspotRef, apiRef }) {
           const label = labelRef.current
           const vignettes = vignetteRefs.current
           const reset = () => {
+            clearLive()
+            labelAnim.current?.cancel()
+            labelAnim.current = null
             box.style.transform = ''
             label.style.opacity = ''
-            vignettes.forEach((v) => v && (v.style.opacity = ''))
+            vignettes.forEach((v) => v && (v.style.opacity = String(VIGNETTE_REST)))
             parallaxLocked.current = false
+            resumeAnimations()
           }
           if (prefersReducedMotion()) {
             reset()
@@ -253,6 +276,15 @@ function Hero({ onOpenMenu, hotspotRef, apiRef }) {
           const from = currentScale()
           const vFrom = vignettes[0] ? parseFloat(getComputedStyle(vignettes[0]).opacity) : VIGNETTE_REST
           clearLive()
+          // Drop any inline end-state left by the reduced-motion path (OS setting changed
+          // while open) so it cannot fight the animation below.
+          const labelHidden = label.style.opacity === '0'
+          box.style.transform = ''
+          label.style.opacity = ''
+          vignettes.forEach((v) => v && (v.style.opacity = String(VIGNETTE_REST)))
+          if (labelHidden && !labelAnim.current) {
+            labelAnim.current = label.animate([{ opacity: 0 }, { opacity: 0 }], { duration: 1, fill: 'forwards' })
+          }
           const a = track(box, [{ transform: `scale(${from})` }, { transform: 'scale(1)' }], {
             duration: DOLLY_OUT_MS,
             easing: DOLLY_EASE,
@@ -261,6 +293,7 @@ function Hero({ onOpenMenu, hotspotRef, apiRef }) {
           await a.finished.catch(() => {})
           clearLive()
           parallaxLocked.current = false
+          resumeAnimations()
           const fade = label.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120 })
           labelAnim.current?.cancel()
           labelAnim.current = null
@@ -281,7 +314,33 @@ function Hero({ onOpenMenu, hotspotRef, apiRef }) {
 
   return (
     <section ref={stageRef} className="stage" aria-label="Pakka Local food truck">
-      {/* Phones and tablets: blurred copy of the photo fills the letterbox area. */}
+      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 px-4 pt-4 sm:px-8 sm:pt-6">
+        <h1 className="hero-text m-0 flex items-center gap-3 text-lg font-semibold tracking-wide text-white sm:text-xl">
+          <img
+            src={img('logo.png')}
+            width="40"
+            height="40"
+            alt=""
+            className="h-10 w-10 rounded-full ring-1 ring-white/30"
+          />
+          Pakka Local
+        </h1>
+        <div role="group" aria-label="Choose scene" className="glass flex gap-1 rounded-full p-1">
+          {SCENES.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className="seg-btn"
+              aria-pressed={requestedId === s.id}
+              onClick={() => selectScene(s.id)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Whenever the photo is contained: blurred copy of it fills the letterbox area. */}
       <img
         className="scene-ambient"
         src={scene.src}
@@ -292,7 +351,7 @@ function Hero({ onOpenMenu, hotspotRef, apiRef }) {
         draggable="false"
       />
 
-      <div ref={scrollRef} className="scene-layer">
+      <div ref={scrollRef} className="scene-layer scene-layer-scroll">
         <div ref={mouseRef} className="scene-layer scene-mouse">
           <div className="scene-layer scene-intro">
             <div className="scene-layer scene-drift">
@@ -374,32 +433,6 @@ function Hero({ onOpenMenu, hotspotRef, apiRef }) {
         style={{ opacity: VIGNETTE_REST }}
         className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[30%] bg-gradient-to-t from-black/70 to-transparent"
       />
-
-      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 px-4 pt-4 sm:px-8 sm:pt-6">
-        <h1 className="hero-text m-0 flex items-center gap-3 text-lg font-semibold tracking-wide text-white sm:text-xl">
-          <img
-            src={img('logo.png')}
-            width="40"
-            height="40"
-            alt=""
-            className="h-10 w-10 rounded-full ring-1 ring-white/30"
-          />
-          Pakka Local
-        </h1>
-        <div role="group" aria-label="Choose scene" className="glass flex gap-1 rounded-full p-1">
-          {SCENES.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              className="seg-btn"
-              aria-pressed={requestedId === s.id}
-              onClick={() => selectScene(s.id)}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      </div>
 
       <div className="hero-text absolute bottom-0 left-0 z-20 flex flex-col gap-1 px-4 pb-4 text-sm text-white sm:px-8 sm:pb-6">
         <span className="font-medium">Indian street food · Chantilly, Virginia</span>

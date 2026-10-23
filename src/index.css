@@ -30,6 +30,7 @@ body {
 
 .stage {
   position: relative;
+  height: 100vh;
   height: 100dvh;
   min-height: 300px;
   overflow: hidden;
@@ -43,6 +44,9 @@ body {
 .scene-layer {
   position: absolute;
   inset: 0;
+}
+
+.scene-layer-scroll {
   will-change: transform;
 }
 
@@ -76,18 +80,23 @@ body {
   }
 }
 
-@media (max-width: 1023.98px) {
-  /* Contained photo on phones/tablets: keep the whole truck in frame. */
-  .scene-drift {
-    animation-name: scene-drift-soft;
+/* Contained photo (default): keep the whole truck in frame. */
+@keyframes scene-drift-soft {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
   }
-  @keyframes scene-drift-soft {
-    from {
-      transform: translate3d(0, 0, 0) scale(1);
-    }
-    to {
-      transform: translate3d(-0.6%, -0.6%, 0) scale(1.02);
-    }
+  to {
+    transform: translate3d(-0.6%, -0.6%, 0) scale(1.02);
+  }
+}
+
+.scene-drift {
+  animation-name: scene-drift-soft;
+}
+
+@media (min-width: 1024px) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 2/1) {
+  .scene-drift {
+    animation-name: scene-drift;
   }
 }
 
@@ -98,7 +107,8 @@ body {
   z-index: 5;
   background: #0b0b0e;
   pointer-events: none;
-  animation: scene-veil 1.4s ease-out both;
+  opacity: 0;
+  animation: scene-veil 1.4s ease-out backwards;
 }
 
 @keyframes scene-veil {
@@ -110,28 +120,30 @@ body {
   }
 }
 
-/* Phones and tablets: the same photo, blurred, instead of black letterbox bars. */
+/* Whenever the photo is CONTAINED (phones, tablets, portrait or ultrawide windows):
+   the same photo, blurred, instead of black letterbox bars. */
 .scene-ambient {
-  display: none;
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.15);
+  filter: blur(28px) saturate(1.2) brightness(0.45);
+  pointer-events: none;
+  user-select: none;
 }
 
-@media (max-width: 1023.98px) {
+@media (min-width: 1024px) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 2/1) {
   .scene-ambient {
-    display: block;
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transform: scale(1.15);
-    filter: blur(28px) saturate(1.2) brightness(0.45);
-    pointer-events: none;
-    user-select: none;
+    display: none;
   }
 }
 
 .stage[data-offscreen] .scene-drift,
-.stage[data-offscreen] .glow-neon {
+.stage[data-offscreen] .glow-neon,
+.stage[data-offscreen] .pulse-dot::after {
   animation-play-state: paused;
 }
 
@@ -144,14 +156,19 @@ body {
   inset: 0;
   margin: auto;
   will-change: transform;
-  /* Phone / tablet: CONTAIN - the whole truck is visible. */
+  /* CONTAIN (default): the whole truck is visible. vw/vh first for old iOS, then cq units. */
+  width: min(100vw, calc(100vh * var(--ratio)));
+  height: min(calc(100vw / var(--ratio)), 100vh);
   width: min(100cqw, 100cqh * var(--ratio));
   height: min(100cqw / var(--ratio), 100cqh);
 }
 
-@media (min-width: 1024px) {
+/* COVER the viewport, never stretch: only on landscape-ish desktop windows, so portrait
+   and ultrawide viewports (where cover would push the board off-screen) contain instead. */
+@media (min-width: 1024px) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 2/1) {
   .scene-box {
-    /* Desktop: COVER the viewport, never stretch. */
+    width: max(100vw, calc(100vh * var(--ratio)));
+    height: max(calc(100vw / var(--ratio)), 100vh);
     width: max(100cqw, 100cqh * var(--ratio));
     height: max(100cqw / var(--ratio), 100cqh);
   }
@@ -165,6 +182,7 @@ body {
   width: var(--gw);
   height: var(--gh);
   border-radius: 50%;
+  background: radial-gradient(closest-side, var(--glow) 0%, transparent 100%);
   background: radial-gradient(
     closest-side,
     var(--glow) 0%,
@@ -176,6 +194,7 @@ body {
 }
 
 .glow-neon {
+  opacity: 0.75;
   animation: neon-flicker 4s linear infinite;
 }
 
@@ -365,6 +384,8 @@ body {
   z-index: 100;
   display: flex;
   flex-direction: column;
+  overscroll-behavior: contain;
+  touch-action: none;
 }
 
 /* Fades in/out (opacity only) while the photo dollies into the board. */
@@ -372,8 +393,8 @@ body {
   position: absolute;
   inset: 0;
   background: rgb(0 0 0 / 0.85);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
   pointer-events: none;
 }
 
@@ -427,6 +448,12 @@ body {
   }
 }
 
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background-color: rgb(0 0 0 / 0.55);
+  }
+}
+
 /* ---------- Gallery row: scrollable, no visible scrollbar ---------- */
 
 .hide-scrollbar {
@@ -446,5 +473,9 @@ body {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+
+  .scene-veil {
+    display: none;
   }
 }
