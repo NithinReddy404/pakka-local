@@ -46,7 +46,6 @@ async function lay(patch, dst, edges = 8, ref = null) {
   canvas = await sharp(canvas).composite([{ input: soft, left: dst.left, top: dst.top }]).png().toBuffer();
 }
 const grab = (r) => sharp(SRC).extract(r).png().toBuffer();          // from the untouched render
-const grabCanvas = (r) => sharp(canvas).extract(r).png().toBuffer(); // from the work so far
 const raw = async (buf, rect) => {
   const img = rect ? sharp(buf).extract(rect) : sharp(buf);
   const { data, info } = await img.removeAlpha().raw().toBuffer({ resolveWithObject: true });

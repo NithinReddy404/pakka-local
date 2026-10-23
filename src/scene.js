@@ -45,6 +45,13 @@ export const BUBBLES = {
   cart: { x: 29.6, y: 44.2 }, // above the CHAT BANDI canopy sign
 }
 
+// Portrait phones: the scene is this fraction of the viewport height (smaller = less to pan),
+// centred vertically over a blurred copy of itself.
+export const PORTRAIT = { fill: 0.74 }
+
+// The lit MENU sign that hangs above the menu board (anchor = bottom centre of the sign).
+export const MENU_TAG = { x: 83.4, y: 52.6 }
+
 // The butterfly that roams around the menu board: figure-eight radius in board widths,
 // loop time and the pause on the board's top edge (seconds).
 export const BUTTERFLY = { radius: 1.5, loopS: 16, perchS: 3.5, seed: 20261023 }
@@ -115,7 +122,7 @@ export const TILT = { maxY: 2.2, maxX: 1.4 } // degrees
 export const LANDSCAPE_MIN_ASPECT = 1.2
 export const CROP_TOP_MAX = 36
 export const PAN_START_X = 69 // initial pan centres the truck window
-export const PAN_KEEP_VISIBLE = { right: 87, windowLeft: 64.2 } // nudge so the board shows too
+export const PAN_KEEP_VISIBLE = { right: 90.5, windowLeft: 64.2 } // nudge so the board and its MENU sign show too
 
 // Camera dolly into the menu board.
 export const DOLLY = { scale: 2.6, inMs: 650, outMs: 450, ease: 'cubic-bezier(.65,0,.35,1)' }

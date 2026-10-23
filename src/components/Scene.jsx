@@ -1,6 +1,5 @@
 import { memo, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
-import {
-  CROP_TOP_MAX,
+import { CROP_TOP_MAX,
   DEPTH,
   DOLLY,
   HOTSPOTS,
@@ -19,8 +18,7 @@ import {
   SEAM,
   CART_PERSON,
   BUBBLES,
-  polygonBounds,
-} from '../scene.js'
+  polygonBounds, PORTRAIT, MENU_TAG } from '../scene.js'
 import { isDesktopPointer, pauseAnimations, useReducedMotion } from '../motion.js'
 import Vendor from './Vendor.jsx'
 import { Birds, Clouds, Dust, Steam, SunsetGlow, TreeFilter } from './SceneFx.jsx'
@@ -37,6 +35,7 @@ const FULL = { left: 0, top: 0, width: 100, height: 100 }
 const TREES_L = polygonBounds(POLYGONS.treesLeft)
 const TREES_R = polygonBounds(POLYGONS.treesRight)
 const DRAG_THRESHOLD = 6
+const NUDGE_PX = 64 // the first-visit swipe hint slides the scene this far and back
 const HINT_KEY = 'pakka-drag-hint-seen'
 
 function SceneImg({ imgRef, alt = '', style, priority }) {
@@ -154,10 +153,11 @@ function Scene({ apiRef, onOpenMenu, onTalk, menuBtnRef, counterBtnRef, cartBtnR
         v.boxTop = -Math.min(v.H - h, (v.H * CROP_TOP_MAX) / 100)
         v.x = 0
       } else {
-        v.H = h
-        v.W = h * RATIO
+        // Portrait: a shorter scene (less to pan), centred over the blurred ambient copy.
+        v.H = Math.round(h * PORTRAIT.fill)
+        v.W = v.H * RATIO
         v.boxLeft = 0
-        v.boxTop = 0
+        v.boxTop = Math.round((h - v.H) / 2)
         const min = w - v.W
         if (v.centre == null) {
           // First layout: centre the truck window, then nudge left so the board shows too.
@@ -183,7 +183,36 @@ function Scene({ apiRef, onOpenMenu, onTalk, menuBtnRef, counterBtnRef, cartBtnR
     layout()
     const ro = new ResizeObserver(layout)
     ro.observe(stage)
-    return () => ro.disconnect()
+
+    // First visit on a phone: after the entrance, slide the scene right and back twice, so the
+    // visitor sees it moves. Stops the moment they touch it.
+    let raf = 0
+    let timer = 0
+    if (v.portrait && !stage.dataset.dragged && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const swing = (start, dur, done) => {
+        const base = v.x
+        const step = (now) => {
+          if (stage.dataset.dragged || v.locked) return
+          const t = Math.min(1, (now - start) / dur)
+          v.x = clamp(base + NUDGE_PX * Math.sin(Math.PI * t), v.w - v.W, 0)
+          v.centre = (v.w / 2 - v.x) / v.W
+          v.write()
+          if (t < 1) raf = requestAnimationFrame(step)
+          else done?.()
+        }
+        raf = requestAnimationFrame(step)
+      }
+      timer = window.setTimeout(() => {
+        swing(performance.now(), 1300, () => {
+          timer = window.setTimeout(() => swing(performance.now(), 1300), 500)
+        })
+      }, 1900)
+    }
+    return () => {
+      ro.disconnect()
+      cancelAnimationFrame(raf)
+      window.clearTimeout(timer)
+    }
   }, [])
 
   // ---------- Pan (drag, inertia, gyro) and tilt (mouse, or follows pan on touch) ----------
@@ -571,6 +600,7 @@ function Scene({ apiRef, onOpenMenu, onTalk, menuBtnRef, counterBtnRef, cartBtnR
       data-talking={talking ? '1' : undefined}
     >
       <TreeFilter enabled={desktop && fxOn} pausedRef={pausedRef} />
+      <div className="scene-ambient" aria-hidden="true" style={{ backgroundImage: `url(${IMAGE.tiny})` }} />
       <div ref={panRef} className="pan">
         <div ref={boxRef} className="box">
           <img className="placeholder" src={IMAGE.tiny} alt="" aria-hidden="true" draggable="false" />
@@ -679,6 +709,11 @@ function Scene({ apiRef, onOpenMenu, onTalk, menuBtnRef, counterBtnRef, cartBtnR
                         {s.bubble}
                       </span>
                     </span>
+                    <span className="bubble-pos" style={bubbleStyle(MENU_TAG)} aria-hidden="true">
+                      <span className="menu-tag" onClick={onOpenMenu}>
+                        {s.menuTag}
+                      </span>
+                    </span>
                     <Butterfly board={m} text={s.bflyBubble} onOpen={onOpenMenu} reduce={reduce} />
                   </div>
                 </div>
@@ -689,8 +724,18 @@ function Scene({ apiRef, onOpenMenu, onTalk, menuBtnRef, counterBtnRef, cartBtnR
         </div>
       </div>
       <div ref={veilRef} className="veil" aria-hidden="true" />
-      <div className="drag-hint glass" aria-hidden="true">
-        <span className="drag-hint-hand">↔</span> {s.dragHint}
+      {/* First-visit swipe hint (portrait only): a hand that swipes, no words. */}
+      <div className="swipe-hint" aria-hidden="true">
+        <svg className="swipe-hand" viewBox="0 0 48 56" focusable="false">
+          <path
+            d="M18 30V11a4 4 0 0 1 8 0v15l3-1.5a4 4 0 0 1 5.4 2.2l.4 1.1 3.2-1a4 4 0 0 1 5 2.8l.3 1.6 2.4-.6a3.6 3.6 0 0 1 4.4 2.9l-1.6 11.6A10 10 0 0 1 38.6 54H24a10 10 0 0 1-8.3-4.4L7.5 37.3a3.8 3.8 0 0 1 5.6-5l4.9 4.4z"
+            fill="#fff"
+            stroke="#141414"
+            strokeWidth="2.2"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span className="swipe-trail" />
       </div>
     </div>
   )
