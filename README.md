@@ -129,4 +129,5 @@ For Netlify, Vercel and a custom domain, never set `base`: leave it at `/`.
 `node scripts/clean-scene.mjs` rebuilds `source-photos/scene-clean.png` from `source-photos/scene.webp`
 with the propane cylinder, the trash can and the folding chair cloned out (truck body, the door seam,
 the lower trim and clean gravel are copied over them with feathered edges). `prepare-scene.mjs` uses
-the clean file automatically when it exists. Delete `scene-clean.png` to go back to the untouched render.
+the clean file automatically when it exists. The site currently ships the untouched render (the owner prefers
+the cylinder and trash can in the picture); run the script only if you want them removed.
