@@ -22,7 +22,6 @@ import { CROP_TOP_MAX,
 import { isDesktopPointer, pauseAnimations, useReducedMotion } from '../motion.js'
 import Vendor from './Vendor.jsx'
 import { Birds, Clouds, Dust, Steam, SunsetGlow, TreeFilter } from './SceneFx.jsx'
-import Butterfly from './Butterfly.jsx'
 import { useI18n } from '../i18n.js'
 
 const pct = (n) => `${n}%`
@@ -35,7 +34,7 @@ const FULL = { left: 0, top: 0, width: 100, height: 100 }
 const TREES_L = polygonBounds(POLYGONS.treesLeft)
 const TREES_R = polygonBounds(POLYGONS.treesRight)
 const DRAG_THRESHOLD = 6
-const NUDGE_PX = 64 // the first-visit swipe hint slides the scene this far and back
+const NUDGE_PX = 22 // first visit on a phone: the scene slides this little and back, as a hint
 const HINT_KEY = 'pakka-drag-hint-seen'
 
 function SceneImg({ imgRef, alt = '', style, priority }) {
@@ -184,8 +183,8 @@ function Scene({ apiRef, onOpenMenu, onTalk, menuBtnRef, counterBtnRef, cartBtnR
     const ro = new ResizeObserver(layout)
     ro.observe(stage)
 
-    // First visit on a phone: after the entrance, slide the scene right and back twice, so the
-    // visitor sees it moves. Stops the moment they touch it.
+    // First visit on a phone: after the entrance, the scene slides a little and back, twice,
+    // so the visitor sees it moves. Stops the moment they touch it.
     let raf = 0
     let timer = 0
     if (v.portrait && !stage.dataset.dragged && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -714,7 +713,6 @@ function Scene({ apiRef, onOpenMenu, onTalk, menuBtnRef, counterBtnRef, cartBtnR
                         {s.menuTag}
                       </span>
                     </span>
-                    <Butterfly board={m} text={s.bflyBubble} onOpen={onOpenMenu} reduce={reduce} />
                   </div>
                 </div>
               </div>
@@ -724,19 +722,6 @@ function Scene({ apiRef, onOpenMenu, onTalk, menuBtnRef, counterBtnRef, cartBtnR
         </div>
       </div>
       <div ref={veilRef} className="veil" aria-hidden="true" />
-      {/* First-visit swipe hint (portrait only): a hand that swipes, no words. */}
-      <div className="swipe-hint" aria-hidden="true">
-        <svg className="swipe-hand" viewBox="0 0 48 56" focusable="false">
-          <path
-            d="M18 30V11a4 4 0 0 1 8 0v15l3-1.5a4 4 0 0 1 5.4 2.2l.4 1.1 3.2-1a4 4 0 0 1 5 2.8l.3 1.6 2.4-.6a3.6 3.6 0 0 1 4.4 2.9l-1.6 11.6A10 10 0 0 1 38.6 54H24a10 10 0 0 1-8.3-4.4L7.5 37.3a3.8 3.8 0 0 1 5.6-5l4.9 4.4z"
-            fill="#fff"
-            stroke="#141414"
-            strokeWidth="2.2"
-            strokeLinejoin="round"
-          />
-        </svg>
-        <span className="swipe-trail" />
-      </div>
     </div>
   )
 }

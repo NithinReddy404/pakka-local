@@ -45,16 +45,12 @@ export const BUBBLES = {
   cart: { x: 29.6, y: 44.2 }, // above the CHAT BANDI canopy sign
 }
 
-// Portrait phones: the scene is this fraction of the viewport height (smaller = less to pan),
-// centred vertically over a blurred copy of itself.
-export const PORTRAIT = { fill: 0.74 }
+// Portrait phones: the scene fills the full viewport height (1 = full screen; a smaller value
+// shortens the picture, shows a blurred copy behind it and reduces the sideways pan).
+export const PORTRAIT = { fill: 1 }
 
 // The lit MENU sign that hangs above the menu board (anchor = bottom centre of the sign).
 export const MENU_TAG = { x: 83.4, y: 52.6 }
-
-// The butterfly that roams around the menu board: figure-eight radius in board widths,
-// loop time and the pause on the board's top edge (seconds).
-export const BUTTERFLY = { radius: 1.5, loopS: 16, perchS: 3.5, seed: 20261023 }
 
 // Where the vendor stands: the inside of the serving window. He is clipped to this rect.
 export const WINDOW_INTERIOR = { left: 65.8, top: 45.7, width: 6.7, height: 6.6 }
