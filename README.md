@@ -123,3 +123,10 @@ For Netlify, Vercel and a custom domain, never set `base`: leave it at `/`.
 - Cache headers: `public/_headers` is copied into `dist/`, so Netlify applies it for Git deploys and for a drag-and-drop of `dist/` alike. It caches `/assets/*` (content-hashed) for a year, `/img/*` (including the scene images) for one day, and always revalidates `/img/menu.webp` so a new menu board shows up immediately. `vercel.json` carries the same rules for Vercel. GitHub Pages ignores both files and sets its own caching.
 - The display font (Archivo Black) loads from Google Fonts; Telugu, Hindi, Tamil and Malayalam use the system font.
 - Accessibility: every hotspot is a real button reachable with Tab, the dialogue and the menu are modal dialogs (focus trapped and returned, Esc closes), screen readers get the full dialogue text at once, and reduced-motion visitors get a still scene with instant transitions.
+
+## Removing clutter from the render
+
+`node scripts/clean-scene.mjs` rebuilds `source-photos/scene-clean.png` from `source-photos/scene.webp`
+with the propane cylinder, the trash can and the folding chair cloned out (truck body, the door seam,
+the lower trim and clean gravel are copied over them with feathered edges). `prepare-scene.mjs` uses
+the clean file automatically when it exists. Delete `scene-clean.png` to go back to the untouched render.
