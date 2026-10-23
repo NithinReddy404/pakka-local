@@ -1,111 +1,450 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+@import "tailwindcss";
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+@theme {
+  --color-ink: #0b0b0e;
+  --color-paper: #f4efe6;
+  --color-ember: #ffd27a;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+html {
+  scrollbar-gutter: stable;
+  background: #0b0b0e;
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
+  background: #0b0b0e;
+  color: #f4efe6;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+:focus-visible {
+  outline: 2px solid #ffd27a;
+  outline-offset: 3px;
+}
+
+/* ---------- Hero stage ---------- */
+
+.stage {
+  position: relative;
+  height: 100dvh;
+  min-height: 300px;
+  overflow: hidden;
+  background: #0b0b0e;
+  container-type: size;
+}
+
+/* Stacked wrappers, each owning ONE transform so the effects never fight:
+   scroll parallax > mouse parallax > entrance > ken-burns drift > scene-box (dolly zoom).
+   All are stage-sized and layout-neutral; only transform/opacity ever animates. */
+.scene-layer {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+.scene-mouse {
+  transition: transform 300ms ease-out;
+}
+
+.scene-intro {
+  animation: scene-intro 1.4s ease-out both;
+}
+
+.scene-drift {
+  animation: scene-drift 24s ease-in-out 1.4s infinite alternate both;
+}
+
+@keyframes scene-intro {
+  from {
+    transform: scale(1.06);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes scene-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(-1%, -1%, 0) scale(1.04);
+  }
+}
+
+@media (max-width: 1023.98px) {
+  /* Contained photo on phones/tablets: keep the whole truck in frame. */
+  .scene-drift {
+    animation-name: scene-drift-soft;
+  }
+  @keyframes scene-drift-soft {
+    from {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    to {
+      transform: translate3d(-0.6%, -0.6%, 0) scale(1.02);
+    }
+  }
+}
+
+/* "Lights coming up": a black veil fades out (opacity only) over the entrance. */
+.scene-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: #0b0b0e;
+  pointer-events: none;
+  animation: scene-veil 1.4s ease-out both;
+}
+
+@keyframes scene-veil {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Phones and tablets: the same photo, blurred, instead of black letterbox bars. */
+.scene-ambient {
+  display: none;
+}
+
+@media (max-width: 1023.98px) {
+  .scene-ambient {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scale(1.15);
+    filter: blur(28px) saturate(1.2) brightness(0.45);
+    pointer-events: none;
+    user-select: none;
+  }
+}
+
+.stage[data-offscreen] .scene-drift,
+.stage[data-offscreen] .glow-neon {
+  animation-play-state: paused;
+}
+
+/* Box with the photo's own aspect ratio, centred in the stage. Everything that must
+   stay glued to the photo (glows, hotspot, label) lives inside it in percent. It also
+   carries the dolly-in zoom, so it is sized with explicit width and height (no
+   translate-centring that would collide with that transform). */
+.scene-box {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  will-change: transform;
+  /* Phone / tablet: CONTAIN - the whole truck is visible. */
+  width: min(100cqw, 100cqh * var(--ratio));
+  height: min(100cqw / var(--ratio), 100cqh);
+}
+
+@media (min-width: 1024px) {
+  .scene-box {
+    /* Desktop: COVER the viewport, never stretch. */
+    width: max(100cqw, 100cqh * var(--ratio));
+    height: max(100cqw / var(--ratio), 100cqh);
+  }
+}
+
+/* Decorative light on the photo; positioned by percent inside the scene box. */
+.glow {
+  position: absolute;
+  left: calc(var(--gx) - var(--gw) / 2);
+  top: calc(var(--gy) - var(--gh) / 2);
+  width: var(--gw);
+  height: var(--gh);
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    var(--glow) 0%,
+    color-mix(in srgb, var(--glow) 40%, transparent) 45%,
+    transparent 100%
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.glow-neon {
+  animation: neon-flicker 4s linear infinite;
+}
+
+@keyframes neon-flicker {
+  0% { opacity: 0.7; }
+  8% { opacity: 0.85; }
+  10% { opacity: 0.55; }
+  12% { opacity: 0.8; }
+  30% { opacity: 0.85; }
+  34% { opacity: 0.6; }
+  36% { opacity: 0.82; }
+  60% { opacity: 0.75; }
+  62% { opacity: 0.55; }
+  64% { opacity: 0.8; }
+  80% { opacity: 0.85; }
+  100% { opacity: 0.7; }
+}
+
+.scene-img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.hotspot-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hotspot {
+  position: absolute;
+  left: var(--hl);
+  top: var(--ht);
+  width: var(--hw);
+  height: var(--hh);
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: box-shadow 0.2s ease;
+}
+
+/* Larger tap target on phones, invisible. */
+.hotspot::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+}
+
+.hotspot:hover {
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.55);
+}
+
+.hotspot:focus-visible {
+  outline: 3px solid #ffd27a;
+  outline-offset: 4px;
+}
+
+/* Label sits BESIDE the board (to its left), never over it. */
+.hotspot-label {
+  position: absolute;
+  right: calc(100% - var(--hl) + 10px);
+  top: var(--ht);
+  max-width: calc(var(--hl) - 8px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 18px;
+  border: 1px solid rgb(255 255 255 / 0.2);
+  background-color: rgb(255 255 255 / 0.1);
+  background-image: linear-gradient(rgb(0 0 0 / 0.3), rgb(0 0 0 / 0.3));
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.3;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.6);
+  text-wrap: balance;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 300ms ease-out;
+}
+
+@media (min-width: 640px) {
+  .hotspot-label {
+    font-size: 13px;
+    padding: 8px 14px;
+    border-radius: 9999px;
+    white-space: nowrap;
+  }
+}
+
+.pulse-dot {
+  position: relative;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #ffd27a;
+}
+
+.pulse-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: #ffd27a;
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+
+/* ---------- Glass controls ---------- */
+
+.glass {
+  border: 1px solid rgb(255 255 255 / 0.2);
+  background-color: rgb(255 255 255 / 0.1);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: #fff;
+}
+
+.glass-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.glass-btn:hover {
+  background-color: rgb(255 255 255 / 0.2);
+}
+
+.seg-btn {
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 9999px;
+  border: 0;
+  background: transparent;
+  color: rgb(255 255 255 / 0.85);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.seg-btn[aria-pressed="true"] {
+  background: rgb(255 255 255 / 0.9);
+  color: #111;
+}
+
+.hero-text {
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.85), 0 0 12px rgb(0 0 0 / 0.5);
+}
+
+/* ---------- Menu overlay ---------- */
+
+.menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+/* Fades in/out (opacity only) while the photo dollies into the board. */
+.menu-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.85);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+.menu-overlay > :not(.menu-backdrop) {
+  position: relative;
+}
+
+.menu-flip {
+  will-change: transform, opacity;
+}
+
+.menu-viewer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.menu-viewer[data-grab="1"] {
+  cursor: grabbing;
+}
+
+.menu-sheet {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.menu-sheet img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.menu-text-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 28px 48px;
+}
+
+@media (min-width: 768px) {
+  .menu-text-list {
+    grid-template-columns: 1fr 1fr;
   }
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+
+/* ---------- Gallery row: scrollable, no visible scrollbar ---------- */
+
+.hide-scrollbar {
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
 }

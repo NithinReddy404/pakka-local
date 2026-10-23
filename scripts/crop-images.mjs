@@ -38,9 +38,11 @@ day = await mirrorPatch(day, { left: 0, top: 0, width: 232, height: 138 });
 day = sharp(await day.extract({ left: 0, top: 0, width: 1212, height: 735 }).png().toBuffer());
 await write(day, "hero-day", [null, 800]);
 
-// Logo roundel from the day photo -> favicon / brand mark
-await sharp(`${SRC}/2.webp`).extract({ left: 855, top: 362, width: 110, height: 110 })
-  .resize(256).png().toFile(`${OUT}/logo.png`);
+// Logo roundel from the day photo -> favicon (256) and brand mark (96)
+// logo-256.png is the favicon; logo.png (96px) is the small brand mark in the hero.
+const logoCrop = () => sharp(`${SRC}/2.webp`).extract({ left: 855, top: 362, width: 110, height: 110 });
+await logoCrop().resize(256).png({ compressionLevel: 9, palette: true }).toFile(`${OUT}/logo-256.png`);
+await logoCrop().resize(96).png({ compressionLevel: 9, palette: true }).toFile(`${OUT}/logo.png`);
 
 // Menu board (4.webp, 685x888): drop the watermark strip
 await write(sharp(`${SRC}/4.webp`).extract({ left: 0, top: 0, width: 685, height: 825 }), "menu", [null]);
