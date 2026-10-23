@@ -239,6 +239,7 @@ export default function Dialogue({ speaker = 'truck', onClose, onBye, returnFocu
     <div
       ref={panelRef}
       className="dlg"
+      data-speaker={speaker}
       role="dialog"
       aria-modal="true"
       aria-labelledby={nameId}

@@ -1061,6 +1061,14 @@ body {
   color: var(--brand);
 }
 
+/* Each card sits beside its own speaker: the cart's on the left, the vendor's by the truck. */
+@media (min-width: 641px) {
+  .dlg[data-speaker="truck"] {
+    left: auto;
+    right: 24px;
+  }
+}
+
 @media (max-width: 640px) {
   .dlg {
     left: 0;
@@ -1155,6 +1163,8 @@ body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden; /* the board scrolls up and down only, never sideways */
+  touch-action: pan-y;
   overscroll-behavior: contain;
   padding: 28px clamp(16px, 4vw, 56px) 0;
 }
@@ -1552,6 +1562,8 @@ body {
   width: min(440px, calc(100% - 32px));
   max-height: min(72%, 640px);
   overflow-y: auto;
+  overflow-x: hidden;
+  touch-action: pan-y;
   padding: 20px;
   border-radius: 16px;
   background: #fff;
