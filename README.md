@@ -98,25 +98,20 @@ The site is static. `npm run build` produces a `dist/` folder, and that folder i
 3. Import the repository. Vercel detects Vite and reads `vercel.json` (build `npm run build`, output `dist`), so keep the default settings.
 4. Click "Deploy". You get a `.vercel.app` address, and every push to the main branch redeploys.
 
-### d) GitHub Pages
+### d) GitHub Pages (automatic, used for the demo)
 
-A GitHub Pages "project" site lives under a sub-path (`https://YOUR-NAME.github.io/REPO-NAME/`), so Vite must be told about it.
+The repository carries `.github/workflows/pages.yml`. Every push to `main` builds the site with
+`VITE_BASE=/<repo-name>/` and publishes `dist/` to GitHub Pages, so the demo lives at
+`https://<your-name>.github.io/<repo-name>/`.
 
-1. Push this project to a GitHub repository.
-2. In `vite.config.js`, add `base: '/REPO-NAME/',` inside `defineConfig({ ... })`, with `REPO-NAME` being the repository name exactly. (If the repository is called `YOUR-NAME.github.io`, or you use your own domain, keep the default `base: '/'`.) Image paths in the page code follow `base` automatically; also update the `/img/...` paths in `index.html` (favicon and preload) to `/REPO-NAME/img/...`.
-3. Run `npm install --save-dev gh-pages`.
-4. Run `npx gh-pages -d dist` after `npm run build`, or in one go: `npm run build && npx gh-pages -d dist`. This pushes the built files to a branch called `gh-pages`.
-5. On GitHub, open the repository, then Settings, then Pages. Under "Build and deployment" choose "Deploy from a branch", pick the `gh-pages` branch and the `/ (root)` folder, and save.
-6. After a minute the site is live at `https://YOUR-NAME.github.io/REPO-NAME/`. Repeat step 4 to update it.
+1. Push the project to GitHub (public repository, or any plan that allows Pages on private ones).
+2. In the repository open Settings, then Pages, and under "Build and deployment" set Source to
+   "GitHub Actions" (one time; `gh api -X POST repos/<you>/<repo>/pages -f build_type=workflow` does the same).
+3. Push to `main`, or run the "Deploy to GitHub Pages" workflow from the Actions tab. The first run
+   takes about a minute; the Actions page shows the live URL when it finishes.
 
-For Netlify, Vercel and a custom domain, never set `base`: leave it at `/`.
-
-### Before you publish
-
-- [ ] If the phone number or website changes, edit `src/menuData.js` (`PHONE_DISPLAY`, `PHONE_HREF`, `SITE_URL`). The call and text links come from the same place.
-- [ ] If the menu changes, replace `public/img/menu.webp`, edit `src/menuData.js` to match the board exactly, and add a note for any new dish to `src/dishInfo.js` and to `dishes` in `src/i18n.js`.
-- [ ] Run `npm run build` and `npm run lint`; both must finish without errors.
-- [ ] Open the live site on a phone: drag around, talk to the vendor, tap the menu board, add an item, close the menu.
+No code changes are needed for the sub-path: `vite.config.js` reads `VITE_BASE`, and every image path
+in the page follows it. For a user site (`<your-name>.github.io`) or a custom domain, leave `VITE_BASE` unset.
 
 ## Notes
 
